@@ -1,0 +1,2163 @@
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
+
+void main() {
+  runApp(const UniGuideApp());
+}
+
+// ============================================================
+// APP COLORS
+// COMSATS-inspired professional university color palette.
+// ============================================================
+
+class AppColors {
+  static const navy = Color(0xFF073B6D);
+  static const deepNavy = Color(0xFF052B4F);
+  static const blue = Color(0xFF0B6FB7);
+  static const lightBlue = Color(0xFFEAF4FB);
+
+  static const background = Color(0xFFF6F8FB);
+  static const card = Colors.white;
+
+  static const textPrimary = Color(0xFF172B3A);
+  static const textSecondary = Color(0xFF657786);
+
+  static const border = Color(0xFFE1E8EF);
+}
+
+// ============================================================
+// MAIN APP
+// ============================================================
+
+class UniGuideApp extends StatelessWidget {
+  const UniGuideApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'UniGuide AI',
+      debugShowCheckedModeBanner: false,
+
+      theme: ThemeData(
+        useMaterial3: true,
+
+        scaffoldBackgroundColor: AppColors.background,
+
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AppColors.navy,
+          brightness: Brightness.light,
+        ),
+
+        fontFamily: 'Roboto',
+
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          foregroundColor: AppColors.textPrimary,
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+        ),
+
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: AppColors.navy, width: 1.5),
+          ),
+        ),
+      ),
+
+      home: const MainNavigation(),
+    );
+  }
+}
+
+// ============================================================
+// MAIN NAVIGATION
+// ============================================================
+
+class MainNavigation extends StatefulWidget {
+  const MainNavigation({super.key});
+
+  @override
+  State<MainNavigation> createState() => _MainNavigationState();
+}
+
+class _MainNavigationState extends State<MainNavigation> {
+  int selectedIndex = 0;
+
+  final List<Widget> pages = const [
+    HomePage(),
+    AssistantPage(),
+    ResourcesPage(),
+    AboutPage(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool isDesktop = constraints.maxWidth >= 900;
+
+        return Scaffold(
+          body: Row(
+            children: [
+              if (isDesktop)
+                _DesktopNavigation(
+                  selectedIndex: selectedIndex,
+                  onDestinationSelected: (index) {
+                    setState(() {
+                      selectedIndex = index;
+                    });
+                  },
+                ),
+
+              Expanded(child: pages[selectedIndex]),
+            ],
+          ),
+
+          bottomNavigationBar: isDesktop
+              ? null
+              : NavigationBar(
+                  selectedIndex: selectedIndex,
+                  onDestinationSelected: (index) {
+                    setState(() {
+                      selectedIndex = index;
+                    });
+                  },
+                  destinations: const [
+                    NavigationDestination(
+                      icon: Icon(Icons.home_outlined),
+                      selectedIcon: Icon(Icons.home),
+                      label: 'Home',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.auto_awesome_outlined),
+                      selectedIcon: Icon(Icons.auto_awesome),
+                      label: 'Assistant',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.link_outlined),
+                      selectedIcon: Icon(Icons.link),
+                      label: 'Resources',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.info_outline),
+                      selectedIcon: Icon(Icons.info),
+                      label: 'About',
+                    ),
+                  ],
+                ),
+        );
+      },
+    );
+  }
+}
+
+// ============================================================
+// DESKTOP NAVIGATION
+// ============================================================
+
+class _DesktopNavigation extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
+
+  const _DesktopNavigation({
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 250,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(right: BorderSide(color: AppColors.border)),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 28),
+
+            // Logo / brand
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Image.asset(
+                  'assets/images/uniguide_icon.png',
+                  height: 84,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 36),
+
+            _navItem(icon: Icons.home_outlined, label: 'Home', index: 0),
+
+            _navItem(
+              icon: Icons.auto_awesome_outlined,
+              label: 'AI Assistant',
+              index: 1,
+            ),
+
+            _navItem(
+              icon: Icons.link_outlined,
+              label: 'Quick Access',
+              index: 2,
+            ),
+
+            _navItem(
+              icon: Icons.info_outline,
+              label: 'About UniGuide',
+              index: 3,
+            ),
+
+            const Spacer(),
+
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.lightBlue,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.verified_outlined, color: AppColors.navy),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'COMSATS Abbottabad\nStudent Assistant',
+                        style: TextStyle(
+                          fontSize: 12,
+                          height: 1.4,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _navItem({
+    required IconData icon,
+    required String label,
+    required int index,
+  }) {
+    final bool selected = selectedIndex == index;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+      child: Material(
+        color: selected ? AppColors.lightBlue : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => onDestinationSelected(index),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  color: selected ? AppColors.navy : AppColors.textSecondary,
+                ),
+
+                const SizedBox(width: 14),
+
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: selected ? AppColors.navy : AppColors.textSecondary,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// HOME PAGE
+// ============================================================
+
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: _buildAppBar(),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 40),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1180),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _HeroSection(),
+
+                  const SizedBox(height: 34),
+
+                  const Text(
+                    'What can I help you with?',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  const Text(
+                    'Ask UniGuide about university information, student services and campus resources.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  _QuestionChips(),
+
+                  const SizedBox(height: 38),
+
+                  const Text(
+                    'Quick Access',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  const Text(
+                    'Useful official COMSATS resources in one place.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  _QuickAccessGrid(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      toolbarHeight: 68,
+      titleSpacing: 20,
+      title: const _BrandLogo(height: 54),
+    );
+  }
+}
+
+// ============================================================
+// HERO SECTION
+// ============================================================
+
+class _HeroSection extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(30),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.deepNavy, AppColors.navy],
+        ),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final bool compact = constraints.maxWidth < 600;
+
+          return Flex(
+            direction: compact ? Axis.vertical : Axis.horizontal,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: compact ? 0 : 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.18),
+                        ),
+                      ),
+                      child: const Text(
+                        'AI-POWERED UNIVERSITY ASSISTANT',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    const Text(
+                      'Your COMSATS\nStudent Assistant',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 34,
+                        height: 1.12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    Text(
+                      'Get clear answers about fees, admissions, scholarships, hostel, transport, student affairs and more.',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.82),
+                        fontSize: 15,
+                        height: 1.6,
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    FilledButton.icon(
+                      onPressed: () {
+                        // Navigation will be connected later.
+                      },
+                      icon: const Icon(Icons.auto_awesome, size: 18),
+                      label: const Text('Ask UniGuide AI'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.navy,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 15,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              if (!compact) const SizedBox(width: 50),
+
+              if (!compact) Expanded(flex: 2, child: _HeroIllustration()),
+
+              if (compact) const SizedBox(height: 30),
+
+              if (compact) _HeroIllustration(),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ============================================================
+// HERO ILLUSTRATION
+// ============================================================
+
+class _HeroIllustration extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 260,
+        height: 260,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.08),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withOpacity(0.14)),
+        ),
+        child: Image.asset(
+          'assets/images/uniguide_icon.png',
+          width: 210,
+          height: 210,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+          errorBuilder: (context, error, stackTrace) {
+            return const Icon(
+              Icons.school_rounded,
+              size: 80,
+              color: Colors.white,
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// QUESTION CHIPS
+// ============================================================
+
+class _QuestionChips extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final questions = [
+      ('Fees', Icons.payments_outlined),
+      ('Admissions', Icons.how_to_reg_outlined),
+      ('Scholarships', Icons.school_outlined),
+      ('Hostel', Icons.apartment_outlined),
+      ('Transport', Icons.directions_bus_outlined),
+      ('Student Affairs', Icons.support_agent_outlined),
+    ];
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: questions.map((item) {
+        return ActionChip(
+          avatar: Icon(item.$2, size: 18, color: AppColors.navy),
+          label: Text(item.$1),
+          onPressed: () {
+            // Later this will open the AI Assistant
+            // with the selected topic.
+          },
+          backgroundColor: Colors.white,
+          side: const BorderSide(color: AppColors.border),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+// ============================================================
+// QUICK ACCESS GRID
+// ============================================================
+
+// ============================================================
+// OFFICIAL QUICK ACCESS
+// ============================================================
+
+class _QuickAccessGrid extends StatelessWidget {
+  const _QuickAccessGrid({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final resources = [
+      (
+        'CUI Abbottabad',
+        'Official campus website',
+        Icons.language_rounded,
+        'https://cuiatd.edu.pk/',
+      ),
+      (
+        'Student Portal',
+        'Academic & student services',
+        Icons.school_rounded,
+        'https://cuonline.comsats.edu.pk/',
+      ),
+      (
+        'Admissions',
+        'Apply and view admission information',
+        Icons.how_to_reg_rounded,
+        'https://admissions.comsats.edu.pk/',
+      ),
+      (
+        'Outlook Email',
+        'Official university email',
+        Icons.mail_outline_rounded,
+        'https://outlook.office.com/',
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        int columns = 1;
+
+        if (constraints.maxWidth >= 900) {
+          columns = 4;
+        } else if (constraints.maxWidth >= 560) {
+          columns = 2;
+        }
+
+        final width = (constraints.maxWidth - ((columns - 1) * 14)) / columns;
+
+        return Wrap(
+          spacing: 14,
+          runSpacing: 14,
+          children: resources.map((resource) {
+            return SizedBox(
+              width: width,
+              child: _ResourceCard(
+                title: resource.$1,
+                description: resource.$2,
+                icon: resource.$3,
+                url: resource.$4,
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+}
+// ============================================================
+// RESOURCE CARD
+// ============================================================
+
+class _ResourceCard extends StatelessWidget {
+  final String title;
+  final String description;
+  final IconData icon;
+  final String url;
+
+  const _ResourceCard({
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.url,
+  });
+
+  Future<void> _openLink() async {
+    final uri = Uri.parse(url);
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: _openLink,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.lightBlue,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: AppColors.navy),
+              ),
+
+              const SizedBox(height: 18),
+
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+
+              const SizedBox(height: 6),
+
+              Text(
+                description,
+                style: const TextStyle(
+                  fontSize: 13,
+                  height: 1.4,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+
+              const SizedBox(height: 14),
+
+              const Row(
+                children: [
+                  Text(
+                    'Open resource',
+                    style: TextStyle(
+                      color: AppColors.navy,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+
+                  SizedBox(width: 6),
+
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 16,
+                    color: AppColors.navy,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// ASSISTANT PAGE
+// ============================================================
+
+// ============================================================
+// ASSISTANT PAGE
+// ============================================================
+
+class AssistantPage extends StatefulWidget {
+  const AssistantPage({super.key});
+
+  @override
+  State<AssistantPage> createState() => _AssistantPageState();
+}
+
+class _AssistantPageState extends State<AssistantPage> {
+  // ----------------------------------------------------------
+  // FastAPI backend
+  //
+  // For Flutter Web / Chrome:
+  // 127.0.0.1 means your own computer.
+  //
+  // Later, when we run the app on Android emulator, we will
+  // use 10.0.2.2 instead.
+  // ----------------------------------------------------------
+
+  static const String baseUrl = 'http://127.0.0.1:8000';
+
+  final TextEditingController controller = TextEditingController();
+
+  final ScrollController scrollController = ScrollController();
+
+  // ----------------------------------------------------------
+  // Conversation messages
+  //
+  // Each message contains:
+  // role    = user / assistant
+  // text    = message
+  // sources = RAG sources returned by FastAPI
+  // ----------------------------------------------------------
+
+  final List<Map<String, dynamic>> messages = [];
+
+  bool isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Initial assistant message
+    messages.add({
+      'role': 'assistant',
+      'text':
+          'Hello! 👋 I’m UniGuide AI, your COMSATS Abbottabad student assistant. Ask me about fees, admissions, scholarships, hostel, transport, student affairs and other university information.',
+      'sources': <String>[],
+    });
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    scrollController.dispose();
+    super.dispose();
+  }
+
+  // ==========================================================
+  // SEND QUESTION TO FASTAPI
+  // ==========================================================
+
+  Future<void> sendQuestion() async {
+    final question = controller.text.trim();
+
+    // Don't send empty questions.
+    if (question.isEmpty || isLoading) {
+      return;
+    }
+
+    // Add user's message to conversation.
+    setState(() {
+      messages.add({'role': 'user', 'text': question, 'sources': <String>[]});
+
+      controller.clear();
+      isLoading = true;
+    });
+
+    _scrollToBottom();
+
+    try {
+      // ------------------------------------------------------
+      // POST request to:
+      //
+      // http://127.0.0.1:8000/ask
+      //
+      // FastAPI expects:
+      //
+      // {
+      //   "question": "..."
+      // }
+      // ------------------------------------------------------
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/ask'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'question': question}),
+      );
+
+      // ------------------------------------------------------
+      // Successful response
+      // ------------------------------------------------------
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        final answer =
+            data['answer']?.toString() ?? 'I could not generate an answer.';
+
+        // Backend returns sources as a list.
+        final rawSources = data['sources'];
+
+        List<String> sources = [];
+
+        if (rawSources is List) {
+          sources = rawSources.map((source) => source.toString()).toList();
+        }
+
+        setState(() {
+          messages.add({
+            'role': 'assistant',
+            'text': answer,
+            'sources': sources,
+          });
+
+          isLoading = false;
+        });
+      }
+      // ------------------------------------------------------
+      // FastAPI returned an error.
+      // ------------------------------------------------------
+      else {
+        setState(() {
+          messages.add({
+            'role': 'assistant',
+            'text':
+                'Sorry, I could not process your question right now. Please try again.',
+            'sources': <String>[],
+          });
+
+          isLoading = false;
+        });
+      }
+    }
+    // --------------------------------------------------------
+    // Backend/server/network error
+    // --------------------------------------------------------
+    catch (e) {
+      setState(() {
+        messages.add({
+          'role': 'assistant',
+          'text':
+              'I’m unable to connect to the UniGuide AI server. Please make sure the FastAPI backend is running on port 8000.',
+          'sources': <String>[],
+        });
+
+        isLoading = false;
+      });
+    }
+
+    _scrollToBottom();
+  }
+
+  // ==========================================================
+  // SCROLL CHAT TO BOTTOM
+  // ==========================================================
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!scrollController.hasClients) {
+        return;
+      }
+
+      scrollController.animateTo(
+        scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  // ==========================================================
+  // QUICK QUESTION
+  // ==========================================================
+
+  void askQuickQuestion(String question) {
+    controller.text = question;
+    sendQuestion();
+  }
+
+  // ==========================================================
+  // BUILD
+  // ==========================================================
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+
+      appBar: AppBar(
+        titleSpacing: 20,
+
+        title: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.navy,
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: const Icon(
+                Icons.auto_awesome,
+                color: Colors.white,
+                size: 21,
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'UniGuide AI',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                ),
+
+                Text(
+                  'COMSATS Abbottabad Assistant',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+
+      body: Column(
+        children: [
+          // ====================================================
+          // CHAT AREA
+          // ====================================================
+          Expanded(
+            child: messages.isEmpty
+                ? const SizedBox()
+                : ListView.builder(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(18, 24, 18, 20),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messages[index];
+
+                      final bool isUser = message['role'] == 'user';
+
+                      final String text = message['text']?.toString() ?? '';
+
+                      final List<String> sources = (message['sources'] is List)
+                          ? (message['sources'] as List)
+                                .map((item) => item.toString())
+                                .toList()
+                          : <String>[];
+
+                      return _ChatBubble(
+                        text: text,
+                        isUser: isUser,
+                        sources: sources,
+                        query: index > 0
+                            ? messages[index - 1]['text']?.toString() ?? ''
+                            : '',
+                      );
+                    },
+                  ),
+          ),
+
+          // ====================================================
+          // TYPING / LOADING INDICATOR
+          // ====================================================
+          if (isLoading)
+            const Padding(
+              padding: EdgeInsets.only(left: 24, right: 24, bottom: 10),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 8,
+                      height: 8,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+
+                    SizedBox(width: 10),
+
+                    Text(
+                      'UniGuide AI is thinking...',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // ====================================================
+          // QUICK QUESTIONS
+          // ====================================================
+          if (messages.length <= 1 && !isLoading)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _QuickQuestionChip(
+                      label: 'BSSE fee',
+                      onTap: () => askQuickQuestion(
+                        'What is the BS Software Engineering fee at COMSATS Abbottabad?',
+                      ),
+                    ),
+
+                    _QuickQuestionChip(
+                      label: 'Admissions',
+                      onTap: () => askQuickQuestion(
+                        'What is the admission procedure at COMSATS Abbottabad?',
+                      ),
+                    ),
+
+                    _QuickQuestionChip(
+                      label: 'Scholarships',
+                      onTap: () => askQuickQuestion(
+                        'What scholarships are available for students at COMSATS Abbottabad?',
+                      ),
+                    ),
+
+                    _QuickQuestionChip(
+                      label: 'Hostel',
+                      onTap: () => askQuickQuestion(
+                        'What is the hostel fee at COMSATS Abbottabad?',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // ====================================================
+          // MESSAGE INPUT
+          // ====================================================
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: controller,
+
+                      minLines: 1,
+                      maxLines: 5,
+
+                      textInputAction: TextInputAction.send,
+
+                      onSubmitted: (_) {
+                        sendQuestion();
+                      },
+
+                      decoration: InputDecoration(
+                        hintText: 'Ask about fees, admissions, hostel...',
+
+                        prefixIcon: const Icon(
+                          Icons.chat_bubble_outline,
+                          color: AppColors.textSecondary,
+                        ),
+
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 16,
+                        ),
+
+                        suffixIcon: controller.text.isNotEmpty
+                            ? IconButton(
+                                onPressed: () {
+                                  setState(() {
+                                    controller.clear();
+                                  });
+                                },
+                                icon: const Icon(Icons.close),
+                              )
+                            : null,
+                      ),
+
+                      onChanged: (_) {
+                        setState(() {});
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(width: 10),
+
+                  Container(
+                    height: 56,
+                    width: 56,
+                    decoration: BoxDecoration(
+                      color: isLoading
+                          ? AppColors.textSecondary
+                          : AppColors.navy,
+                      borderRadius: BorderRadius.circular(17),
+                    ),
+
+                    child: IconButton(
+                      tooltip: 'Send',
+
+                      onPressed: isLoading ? null : sendQuestion,
+
+                      icon: const Icon(
+                        Icons.arrow_upward_rounded,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// CHAT BUBBLE
+// ============================================================
+
+// ============================================================
+// CHAT BUBBLE + OFFICIAL REFERENCES
+// ============================================================
+
+// ============================================================
+// CHAT BUBBLE
+// ============================================================
+
+class _ChatBubble extends StatelessWidget {
+  final String text;
+  final bool isUser;
+  final List<String> sources;
+  final String query;
+
+  const _ChatBubble({
+    required this.text,
+    required this.isUser,
+    required this.sources,
+    required this.query,
+  });
+
+  // ----------------------------------------------------------
+  // Remove technical source-file text from the AI answer.
+  // User should only see the actual answer.
+  // ----------------------------------------------------------
+
+  String _cleanAnswer(String value) {
+    final lines = value.split('\n');
+
+    final cleanedLines = lines.where((line) {
+      final lower = line.trim().toLowerCase();
+
+      // Remove technical source information
+      if (lower.contains('source file:')) {
+        return false;
+      }
+
+      if (lower.startsWith('source:')) {
+        return false;
+      }
+
+      if (lower.contains('official url:')) {
+        return false;
+      }
+
+      if (lower.startsWith('official url')) {
+        return false;
+      }
+
+      return true;
+    }).toList();
+
+    return cleanedLines.join('\n').trim();
+  }
+
+  // ----------------------------------------------------------
+  // Select ONLY the source relevant to the user's question.
+  // ----------------------------------------------------------
+
+  String? _pickRelevantSource() {
+    if (sources.isEmpty) {
+      return null;
+    }
+
+    final q = query.toLowerCase();
+
+    String? findSource(List<String> keywords) {
+      for (final source in sources) {
+        final lowerSource = source.toLowerCase();
+
+        if (keywords.any((keyword) => lowerSource.contains(keyword))) {
+          return source;
+        }
+      }
+
+      return null;
+    }
+
+    // Fees
+    if (q.contains('fee') ||
+        q.contains('fees') ||
+        q.contains('tuition') ||
+        q.contains('cost') ||
+        q.contains('payment')) {
+      return findSource(['fee']);
+    }
+
+    // Admissions
+    if (q.contains('admission') ||
+        q.contains('apply') ||
+        q.contains('application') ||
+        q.contains('merit') ||
+        q.contains('nat') ||
+        q.contains('nts')) {
+      return findSource(['admission']);
+    }
+
+    // Scholarships
+    if (q.contains('scholarship') ||
+        q.contains('financial aid') ||
+        q.contains('financial assistance') ||
+        q.contains('concession')) {
+      return findSource(['scholar']);
+    }
+
+    // Hostel
+    if (q.contains('hostel') ||
+        q.contains('room') ||
+        q.contains('mess') ||
+        q.contains('accommodation')) {
+      return findSource(['hostel']);
+    }
+
+    // Transport
+    if (q.contains('transport') ||
+        q.contains('bus') ||
+        q.contains('route') ||
+        q.contains('pick and drop')) {
+      return findSource(['transport']);
+    }
+
+    // Student affairs / student services
+    if (q.contains('student affairs') ||
+        q.contains('student service') ||
+        q.contains('student services') ||
+        q.contains('card') ||
+        q.contains('societ') ||
+        q.contains('activity') ||
+        q.contains('activities') ||
+        q.contains('friend') ||
+        q.contains('friends') ||
+        q.contains('campus life') ||
+        q.contains('student life')) {
+      return findSource(['student_affairs']) ?? findSource(['general']);
+    }
+
+    // Rules / discipline
+    if (q.contains('rule') ||
+        q.contains('rules') ||
+        q.contains('discipline') ||
+        q.contains('conduct') ||
+        q.contains('prohibited')) {
+      return findSource(['rule', 'conduct']);
+    }
+
+    // Contact
+    if (q.contains('contact') ||
+        q.contains('phone') ||
+        q.contains('email') ||
+        q.contains('office') ||
+        q.contains('address')) {
+      return findSource(['contact']);
+    }
+
+    // Programs / departments
+    if (q.contains('program') ||
+        q.contains('degree') ||
+        q.contains('department') ||
+        q.contains('software engineering') ||
+        q.contains('computer science')) {
+      return findSource(['program']);
+    }
+
+    // FAQ
+    if (q.contains('faq') ||
+        q.contains('frequently asked') ||
+        q.contains('how can i') ||
+        q.contains('what is')) {
+      return findSource(['faq']);
+    }
+
+    // General university question
+    return findSource(['general']);
+  }
+
+  // ----------------------------------------------------------
+  // Convert technical filename into a clean human title.
+  // ----------------------------------------------------------
+
+  String _referenceTitle(String source) {
+    final lower = source.toLowerCase();
+
+    if (lower.contains('fee')) {
+      return 'CUI Fee Structure';
+    }
+
+    if (lower.contains('admission')) {
+      return 'CUI Admissions';
+    }
+
+    if (lower.contains('scholar')) {
+      return 'CUI Scholarships';
+    }
+
+    if (lower.contains('hostel')) {
+      return 'CUI Hostel';
+    }
+
+    if (lower.contains('transport')) {
+      return 'CUI Transport';
+    }
+
+    if (lower.contains('student_affairs')) {
+      return 'CUI Student Affairs';
+    }
+
+    if (lower.contains('rule') || lower.contains('conduct')) {
+      return 'CUI Rules & Conduct';
+    }
+
+    if (lower.contains('contact')) {
+      return 'CUI Contact';
+    }
+
+    if (lower.contains('program')) {
+      return 'CUI Undergraduate Programs';
+    }
+
+    if (lower.contains('faq')) {
+      return 'CUI FAQs';
+    }
+
+    return 'CUI Abbottabad';
+  }
+
+  // ----------------------------------------------------------
+  // Official CUI page for each source.
+  // ----------------------------------------------------------
+
+  String _referenceUrl(String source) {
+    final lower = source.toLowerCase();
+
+    if (lower.contains('fee')) {
+      return 'https://www.cuiatd.edu.pk/admissions-overview/fee-structure/';
+    }
+
+    if (lower.contains('admission')) {
+      return 'https://www.cuiatd.edu.pk/admissions/';
+    }
+
+    if (lower.contains('scholar')) {
+      return 'https://www.cuiatd.edu.pk/admissions/scholarships/';
+    }
+
+    if (lower.contains('hostel')) {
+      return 'https://www.cuiatd.edu.pk/students/hostel/';
+    }
+
+    if (lower.contains('transport')) {
+      return 'https://www.cuiatd.edu.pk/students/transport-2/';
+    }
+
+    if (lower.contains('student_affairs')) {
+      return 'https://www.cuiatd.edu.pk/about/offices-and-administration/student-affairs/';
+    }
+
+    if (lower.contains('rule') || lower.contains('conduct')) {
+      return 'https://www.cuiatd.edu.pk/students/code-of-conduct/';
+    }
+
+    if (lower.contains('contact')) {
+      return 'https://cuiatd.edu.pk/contact-us/';
+    }
+
+    if (lower.contains('program')) {
+      return 'https://www.cuiatd.edu.pk/admissions-overview/undergraduate/';
+    }
+
+    if (lower.contains('faq')) {
+      return 'https://cuiatd.edu.pk/faqs/';
+    }
+
+    return 'https://cuiatd.edu.pk/';
+  }
+
+  // ----------------------------------------------------------
+  // Small reference card
+  // ----------------------------------------------------------
+
+  Widget _referenceCard(String source) {
+    final title = _referenceTitle(source);
+    final url = _referenceUrl(source);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () async {
+        final uri = Uri.parse(url);
+
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      },
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFDDE5ED)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ------------------------------------------------
+            // OFFICIAL CUI LOGO
+            // ------------------------------------------------
+            ClipRRect(
+              borderRadius: BorderRadius.circular(7),
+              child: Image.asset(
+                'assets/images/cui_logo.png',
+                width: 31,
+                height: 31,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: 31,
+                    height: 31,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEAF2F9),
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                    child: const Text(
+                      'CUI',
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            const SizedBox(width: 9),
+
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+
+            const SizedBox(width: 8),
+
+            const Icon(
+              Icons.open_in_new_rounded,
+              size: 15,
+              color: AppColors.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cleanedAnswer = _cleanAnswer(text);
+    final relevantSource = !isUser ? _pickRelevantSource() : null;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
+        children: [
+          if (!isUser)
+            Container(
+              width: 38,
+              height: 38,
+              margin: const EdgeInsets.only(right: 10, top: 2),
+              decoration: BoxDecoration(
+                color: AppColors.lightBlue,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.auto_awesome,
+                size: 19,
+                color: AppColors.navy,
+              ),
+            ),
+
+          Flexible(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 760),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isUser ? AppColors.navy : Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(18),
+                  topRight: const Radius.circular(18),
+                  bottomLeft: Radius.circular(isUser ? 18 : 5),
+                  bottomRight: Radius.circular(isUser ? 5 : 18),
+                ),
+                border: isUser ? null : Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ------------------------------------------------
+                  // ACTUAL AI ANSWER
+                  // ------------------------------------------------
+                  Text(
+                    cleanedAnswer,
+                    style: TextStyle(
+                      color: isUser ? Colors.white : AppColors.textPrimary,
+                      fontSize: 15,
+                      height: 1.55,
+                    ),
+                  ),
+
+                  // ------------------------------------------------
+                  // ONLY ONE RELEVANT OFFICIAL REFERENCE
+                  // ------------------------------------------------
+                  if (relevantSource != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: _referenceCard(relevantSource),
+                    ),
+                ],
+              ),
+            ),
+          ),
+
+          if (isUser) const SizedBox(width: 48),
+        ],
+      ),
+    );
+  }
+}
+// ============================================================
+// OFFICIAL REFERENCE CARD
+// ============================================================
+
+class _OfficialReference extends StatefulWidget {
+  final String source;
+
+  const _OfficialReference({required this.source});
+
+  @override
+  State<_OfficialReference> createState() => _OfficialReferenceState();
+}
+
+class _OfficialReferenceState extends State<_OfficialReference> {
+  bool hovering = false;
+
+  String get sourceName {
+    final value = widget.source.toLowerCase();
+
+    if (value.contains('fee')) {
+      return 'CUI Fee Structure';
+    }
+
+    if (value.contains('admission')) {
+      return 'CUI Admissions';
+    }
+
+    if (value.contains('scholar')) {
+      return 'CUI Scholarships';
+    }
+
+    if (value.contains('hostel')) {
+      return 'CUI Hostel';
+    }
+
+    if (value.contains('transport')) {
+      return 'CUI Transport';
+    }
+
+    if (value.contains('student_affairs')) {
+      return 'CUI Student Affairs';
+    }
+
+    if (value.contains('rules') || value.contains('conduct')) {
+      return 'CUI Code of Conduct';
+    }
+
+    if (value.contains('contact')) {
+      return 'CUI Contact';
+    }
+
+    if (value.contains('program')) {
+      return 'CUI Undergraduate Programs';
+    }
+
+    if (value.contains('faq')) {
+      return 'CUI FAQs';
+    }
+
+    if (value.contains('general')) {
+      return 'CUI Abbottabad';
+    }
+
+    return 'CUI Abbottabad';
+  }
+
+  String get description {
+    final value = widget.source.toLowerCase();
+
+    if (value.contains('fee')) {
+      return 'Official fee structure';
+    }
+
+    if (value.contains('admission')) {
+      return 'Official admissions information';
+    }
+
+    if (value.contains('scholar')) {
+      return 'Official scholarship information';
+    }
+
+    if (value.contains('hostel')) {
+      return 'Official hostel information';
+    }
+
+    if (value.contains('transport')) {
+      return 'Official transport information';
+    }
+
+    if (value.contains('student_affairs')) {
+      return 'Official student affairs information';
+    }
+
+    if (value.contains('rules') || value.contains('conduct')) {
+      return 'Official university rules';
+    }
+
+    if (value.contains('contact')) {
+      return 'Official campus contact information';
+    }
+
+    if (value.contains('program')) {
+      return 'Official degree programs';
+    }
+
+    if (value.contains('faq')) {
+      return 'Official frequently asked questions';
+    }
+
+    return 'Official CUI Abbottabad source';
+  }
+
+  String get url {
+    final value = widget.source.toLowerCase();
+
+    if (value.contains('fee')) {
+      return 'https://www.cuiatd.edu.pk/admissions-overview/fee-structure/';
+    }
+
+    if (value.contains('admission')) {
+      return 'https://www.cuiatd.edu.pk/admissions/';
+    }
+
+    if (value.contains('scholar')) {
+      return 'https://www.cuiatd.edu.pk/admissions/scholarships/';
+    }
+
+    if (value.contains('hostel')) {
+      return 'https://www.cuiatd.edu.pk/students/hostel/';
+    }
+
+    if (value.contains('transport')) {
+      return 'https://www.cuiatd.edu.pk/students/transport-2/';
+    }
+
+    if (value.contains('student_affairs')) {
+      return 'https://www.cuiatd.edu.pk/about/offices-and-administration/student-affairs/';
+    }
+
+    if (value.contains('rules') || value.contains('conduct')) {
+      return 'https://www.cuiatd.edu.pk/students/code-of-conduct/';
+    }
+
+    if (value.contains('contact')) {
+      return 'https://cuiatd.edu.pk/contact-us/';
+    }
+
+    if (value.contains('program')) {
+      return 'https://www.cuiatd.edu.pk/admissions-overview/undergraduate/';
+    }
+
+    if (value.contains('faq')) {
+      return 'https://cuiatd.edu.pk/faqs/';
+    }
+
+    return 'https://cuiatd.edu.pk/';
+  }
+
+  Future<void> openReference() async {
+    final uri = Uri.parse(url);
+
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) {
+        setState(() {
+          hovering = true;
+        });
+      },
+      onExit: (_) {
+        setState(() {
+          hovering = false;
+        });
+      },
+      child: GestureDetector(
+        onTap: openReference,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          transform: Matrix4.translationValues(0, hovering ? -2 : 0, 0),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: hovering ? const Color(0xFFF4F8FC) : Colors.white,
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(
+              color: hovering
+                  ? const Color(0xFFBDD5E8)
+                  : const Color(0xFFE3E9EF),
+            ),
+          ),
+          child: Row(
+            children: [
+              // --------------------------------------------------
+              // CUI mini brand mark
+              // --------------------------------------------------
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F5FA),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFDCE6EF)),
+                ),
+                child: const Center(
+                  child: Text(
+                    'CUI',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 9),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      sourceName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      description,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 7),
+
+              AnimatedRotation(
+                turns: hovering ? 0.04 : 0,
+                duration: const Duration(milliseconds: 180),
+                child: Icon(
+                  Icons.open_in_new_rounded,
+                  size: 15,
+                  color: hovering ? AppColors.blue : AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// QUICK QUESTION CHIP
+// ============================================================
+
+class _QuickQuestionChip extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _QuickQuestionChip({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionChip(
+      label: Text(label),
+
+      avatar: const Icon(Icons.auto_awesome, size: 16, color: AppColors.navy),
+
+      onPressed: onTap,
+
+      backgroundColor: Colors.white,
+
+      side: const BorderSide(color: AppColors.border),
+
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+
+      labelStyle: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textPrimary,
+      ),
+    );
+  }
+}
+
+// ============================================================
+// RESOURCES PAGE
+// ============================================================
+
+class ResourcesPage extends StatelessWidget {
+  const ResourcesPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Quick Access',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(20),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: 1000),
+            child: _QuickAccessGrid(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// ABOUT PAGE
+// ============================================================
+
+class AboutPage extends StatelessWidget {
+  const AboutPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'About UniGuide',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 850),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: AppColors.navy,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(
+                    Icons.school_rounded,
+                    color: Colors.white,
+                    size: 38,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                const Text(
+                  'UniGuide AI',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                const Text(
+                  'AI-Powered COMSATS Abbottabad Information & Student Assistance System',
+                  style: TextStyle(
+                    fontSize: 16,
+                    height: 1.5,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+
+                _aboutCard(
+                  icon: Icons.auto_awesome,
+                  title: 'AI-Powered Assistance',
+                  text:
+                      'UniGuide AI uses retrieval-augmented generation to answer university-related questions using a curated knowledge base.',
+                ),
+
+                const SizedBox(height: 14),
+
+                _aboutCard(
+                  icon: Icons.verified_outlined,
+                  title: 'Source-Grounded Answers',
+                  text:
+                      'The system is designed to retrieve relevant university information before generating an answer.',
+                ),
+
+                const SizedBox(height: 14),
+
+                _aboutCard(
+                  icon: Icons.language_outlined,
+                  title: 'Student-Friendly',
+                  text:
+                      'The assistant is designed to understand natural English, Urdu and Roman Urdu questions.',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _aboutCard({
+    required IconData icon,
+    required String title,
+    required String text,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: AppColors.lightBlue,
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Icon(icon, color: AppColors.navy),
+          ),
+
+          const SizedBox(width: 16),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+
+                const SizedBox(height: 6),
+
+                Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    height: 1.5,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+// ============================================================
+// BRAND LOGO (full UniGuide AI logo with text)
+// ============================================================
+
+class _BrandLogo extends StatelessWidget {
+  final double height;
+
+  const _BrandLogo({required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      'assets/images/uniguide_logo.png',
+      height: height,
+      fit: BoxFit.contain,
+      alignment: Alignment.centerLeft,
+      filterQuality: FilterQuality.high,
+      errorBuilder: (context, error, stackTrace) {
+        return const Text(
+          'UniGuide AI',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+          ),
+        );
+      },
+    );
+  }
+}
