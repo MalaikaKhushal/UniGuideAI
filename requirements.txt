@@ -1,9 +1,14 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+openai
 langchain
 langchain-community
 langchain-openai
 langchain-chroma
+langchain-text-splitters
+langchain-huggingface
 chromadb
+sentence-transformers
 pypdf
-fastapi
-uvicorn
-python-dotenv
+tiktoken
